@@ -1,0 +1,1 @@
+<%@ Application Codebehind="Global.asax.cs" Inherits="DotMercy.Global_asax" Language="C#" %>
