@@ -85,14 +85,28 @@ namespace DotMercy.custom
             if (!uploadedFile.IsValid) return String.Empty;
 
 
-            String UploadDir = "../custom/FileUpload/";
-
-            //=========cek folder name
-            string path = "@" + UploadDir + GetdataSave_mPackingMonthName;
-            if (!Directory.Exists(path))
+            //=========cek folder Packing Month
+            string path = "~/custom/FileUpload/" + GetdataSave_mPackingMonthName;
+            if (!Directory.Exists(Server.MapPath(path)))
             {
-                Directory.CreateDirectory(path);
+                Directory.CreateDirectory(Server.MapPath(path));
             }
+
+            //=========cek folder Model
+            string pathModel = path + "/" + GetdataSave_mModelName;
+            if (!Directory.Exists(Server.MapPath(pathModel)))
+            {
+                Directory.CreateDirectory(Server.MapPath(pathModel));
+            }
+
+            //=========cek folder Varian
+            string pathVarian = pathModel + "/" + GetdataSave_mVarianName;
+            if (!Directory.Exists(Server.MapPath(pathVarian)))
+            {
+                Directory.CreateDirectory(Server.MapPath(pathVarian));
+            }
+
+            String UploadDir = pathVarian + "/"; // "../custom/FileUpload/";
 
 
             FileInfo fileInfo = new FileInfo(uploadedFile.FileName);
@@ -103,7 +117,10 @@ namespace DotMercy.custom
             {
                 fileNameOri = fileNameOri.Substring(0, 16).ToLower() + ext;
             }
-            String fileName = String.Format("PL_{0:yyMMddHHmm}_{1}", DateTime.Now, fileNameOri.ToLower());
+            
+            //String fileName = String.Format("PL_{0:yyMMddHHmm}_{1}", DateTime.Now, fileNameOri.ToLower());
+
+            String fileName = fileNameOri;
             String resFileName = Server.MapPath(UploadDir + fileName);
             uploadedFile.SaveAs(resFileName);
 
@@ -468,16 +485,6 @@ namespace DotMercy.custom
             }
             RD.Close();
 
-
-            //=======test
-            //String UploadDir = "../custom/FileUpload/";
-
-            //=========cek folder name
-            string path = @"..\custom\FileUpload\" + GetdataSave_mFileTypeName;  
-            if (!Directory.Exists(path))
-            {
-                Directory.CreateDirectory(path);
-            }
 
         }
 
