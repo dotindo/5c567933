@@ -110,6 +110,8 @@
     <Content Include="Content\Images\PlasticBlueHeader.jpg" />
     <Content Include="Content\Images\RedWineHeader.jpg" />
     <Content Include="Content\Site.css" />
+    <Content Include="custom\FormFileManager.aspx" />
+    <Content Include="custom\PackingList.aspx" />
     <Content Include="Default.aspx" />
     <Content Include="Dynamic\List.aspx" />
     <Content Include="Global.asax" />
@@ -252,8 +254,11 @@
     <Content Include="Account\Web.config" />
   </ItemGroup>
   <ItemGroup>
-    <Content Include="Web.config" />
+    <Content Include="Web.config">
+      <SubType>Designer</SubType>
+    </Content>
     <Content Include="packages.config" />
+    <Content Include="custom\FileUpload\PL_1610161007_test_upload.xlsx" />
     <None Include="Web.Debug.config">
       <DependentUpon>Web.config</DependentUpon>
     </None>
@@ -296,6 +301,20 @@
     </Compile>
     <Compile Include="Account\RegisterSuccess.aspx.designer.cs">
       <DependentUpon>RegisterSuccess.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="custom\FormFileManager.aspx.cs">
+      <DependentUpon>FormFileManager.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="custom\FormFileManager.aspx.designer.cs">
+      <DependentUpon>FormFileManager.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="custom\PackingList.aspx.cs">
+      <DependentUpon>PackingList.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="custom\PackingList.aspx.designer.cs">
+      <DependentUpon>PackingList.aspx</DependentUpon>
     </Compile>
     <Compile Include="Default.aspx.cs">
       <DependentUpon>Default.aspx</DependentUpon>
