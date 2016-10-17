@@ -69,7 +69,25 @@ namespace DotMercy.custom
                 int mVarianId = GetdataSave_mVarianId;
                 int mFileType = GetdataSave_mFileType;
 
-                Process_SaveMaster(mModelId, mVarianId, mPackingMonthId, mFileType);
+                if (GetdataSave_mFileTypeName == "Packing List")
+                {
+                    Process_SaveMaster(mModelId, mVarianId, mPackingMonthId, mFileType);
+                }
+
+                if (GetdataSave_mFileTypeName == "Technical Alteration")
+                {
+                    Process_SaveMaster_Alteration(mModelId, mVarianId, mPackingMonthId, mFileType);
+                }
+
+                if (GetdataSave_mFileTypeName == "Dialog")
+                {
+                    Process_SaveMaster_Dialog(mModelId, mVarianId, mPackingMonthId, mFileType);
+                }
+
+                if (GetdataSave_mFileTypeName == "Vehicle Order")
+                {
+                    Process_SaveMaster_VO(mModelId, mVarianId, mPackingMonthId, mFileType);
+                }
 
             }
             catch (Exception ex)
@@ -121,15 +139,37 @@ namespace DotMercy.custom
             //String fileName = String.Format("PL_{0:yyMMddHHmm}_{1}", DateTime.Now, fileNameOri.ToLower());
 
             String fileName = fileNameOri;
-            String resFileName = Server.MapPath(UploadDir + fileName);
-            uploadedFile.SaveAs(resFileName);
 
+            String resFileName = "";
+            if (!File.Exists(UploadDir + fileName))
+            {
+                resFileName = Server.MapPath(UploadDir + fileName);
+                uploadedFile.SaveAs(resFileName);
+            }
+            
             //type file check
-            int mFileType = GetdataSave_mFileType;
+            if (GetdataSave_mFileTypeName == "Packing List")
+            {
+                _ProcessExcel(ext, resFileName);
+            }
 
-            _ProcessExcel(ext, resFileName);
+            if (GetdataSave_mFileTypeName == "Technical Alteration")
+            {
+                _ProcessExcel_alteration(ext, resFileName);
+            }
+
+            if (GetdataSave_mFileTypeName == "Dialog")
+            {
+                _ProcessExcel_dialog(ext, resFileName);
+            }
+
+            if (GetdataSave_mFileTypeName == "Vehicle Order")
+            {
+                _ProcessExcel_VO(ext, resFileName);
+            }
 
             String fileLabel = fileInfo.Name;
+
             double fileLength = Convert.ToDouble(uploadedFile.ContentLength / 1024); // kilobyte
             //int JumSampUji = (Session[SNAME_LIST_DETUJI] as List<DetailUjiDS>).Count;
             String ret = ""; // String.Format("{0}|{1}|{2}|{3}", fileName, fileLength, fileType, JumSampUji);
@@ -202,7 +242,8 @@ namespace DotMercy.custom
                     strValue = "";
                     strCaption = "";
 
-                    for (i = 0; i < rdrExcel.FieldCount; i++)
+                    //for (i = 0; i < rdrExcel.FieldCount; i++)
+                    for (i = 0; i < 11; i++)
                     {
 
                         sqlvalues2 = rdrExcel[i].ToString();
@@ -234,6 +275,299 @@ namespace DotMercy.custom
         }
 
 
+        private void _ProcessExcel_alteration(string ext, string fileXls)
+        {
+            System.Data.DataTable dt = null;
+
+            string connString = "";
+            string strFileType = ext;
+            string path = fileXls;
+            //Connection String to Excel Workbook
+            if (strFileType.Trim() == ".xls")
+            {
+                connString = "Provider=Microsoft.Jet.OLEDB.4.0;Data Source=" + path + ";Extended Properties=\"Excel 8.0;HDR=Yes;IMEX=2\"";
+            }
+            else if (strFileType.Trim() == ".xlsx")
+            {
+                connString = "Provider=Microsoft.ACE.OLEDB.12.0;Data Source=" + path + ";Extended Properties=\"Excel 12.0;HDR=Yes;IMEX=2\"";
+            }
+            string query = "";  //"SELECT * FROM [CAT$]";
+            OleDbConnection connExcel = new OleDbConnection(connString);
+            if (connExcel.State == ConnectionState.Closed)
+                connExcel.Open();
+
+            //---------get sheet name
+            int x = 0;
+            dt = connExcel.GetOleDbSchemaTable(OleDbSchemaGuid.Tables, null);
+            String[] excelSheets = new String[dt.Rows.Count];
+
+            foreach (DataRow row in dt.Rows)
+            {
+                if (x == 0)
+                {
+                    excelSheets[x] = row["TABLE_NAME"].ToString();
+                    query = "SELECT * FROM [" + excelSheets[x].Replace("'", "") + "]";
+                }
+                x++;
+            }
+            //---------------
+
+            OleDbCommand cmdExcel = new OleDbCommand(query, connExcel);
+            OleDbDataAdapter daExcel = new OleDbDataAdapter(cmdExcel);
+            DataSet dsExcel = new DataSet();
+
+            daExcel.Fill(dsExcel);
+
+            OleDbDataReader rdrExcel;
+            rdrExcel = cmdExcel.ExecuteReader();
+
+            int data_Detail = 0;
+            int i = 0;
+            int j = 0;
+            string strValue = "";
+            string strCaption = "";
+
+            Import_Delete();
+
+            while (rdrExcel.Read())
+            {
+                string sqlvalues2 = "";
+                string exlcaption = "";
+
+                if (data_Detail >= 0)
+                {
+
+                    strValue = "";
+                    strCaption = "";
+
+                    //for (i = 0; i < rdrExcel.FieldCount; i++)
+                    for (i = 0; i < 14; i++)
+                    {
+
+                        sqlvalues2 = rdrExcel[i].ToString();
+                        exlcaption = rdrExcel.GetName(i);
+
+                        //if (sqlvalues2 != "")
+                        //{
+                        strValue = sqlvalues2 + "|" + strValue;
+
+                        strCaption = exlcaption + "|" + strCaption;
+                        //}
+
+                    }
+
+                }
+
+                data_Detail++;
+
+                if (strValue != "")
+                {
+                    j++;
+                    Import_Proses_alteration(strValue, j);
+                    //Import_Proses(strValue, strCaption, j);
+                }
+            }
+
+            rdrExcel.Close();
+
+        }
+
+
+        private void _ProcessExcel_dialog(string ext, string fileXls)
+        {
+            System.Data.DataTable dt = null;
+
+            string connString = "";
+            string strFileType = ext;
+            string path = fileXls;
+            //Connection String to Excel Workbook
+            if (strFileType.Trim() == ".xls")
+            {
+                connString = "Provider=Microsoft.Jet.OLEDB.4.0;Data Source=" + path + ";Extended Properties=\"Excel 8.0;HDR=Yes;IMEX=2\"";
+            }
+            else if (strFileType.Trim() == ".xlsx")
+            {
+                connString = "Provider=Microsoft.ACE.OLEDB.12.0;Data Source=" + path + ";Extended Properties=\"Excel 12.0;HDR=Yes;IMEX=2\"";
+            }
+            string query = "";  //"SELECT * FROM [CAT$]";
+            OleDbConnection connExcel = new OleDbConnection(connString);
+            if (connExcel.State == ConnectionState.Closed)
+                connExcel.Open();
+
+            //---------get sheet name
+            int x = 0;
+            dt = connExcel.GetOleDbSchemaTable(OleDbSchemaGuid.Tables, null);
+            String[] excelSheets = new String[dt.Rows.Count];
+
+            foreach (DataRow row in dt.Rows)
+            {
+                if (x == 0)
+                {
+                    excelSheets[x] = row["TABLE_NAME"].ToString();
+                    query = "SELECT * FROM [" + excelSheets[x].Replace("'", "") + "]";
+                }
+                x++;
+            }
+            //---------------
+
+            OleDbCommand cmdExcel = new OleDbCommand(query, connExcel);
+            OleDbDataAdapter daExcel = new OleDbDataAdapter(cmdExcel);
+            DataSet dsExcel = new DataSet();
+
+            daExcel.Fill(dsExcel);
+
+            OleDbDataReader rdrExcel;
+            rdrExcel = cmdExcel.ExecuteReader();
+
+            int data_Detail = 0;
+            int i = 0;
+            int j = 0;
+            string strValue = "";
+            string strCaption = "";
+
+            Import_Delete();
+
+            while (rdrExcel.Read())
+            {
+                string sqlvalues2 = "";
+                string exlcaption = "";
+
+                if (data_Detail >= 0)
+                {
+
+                    strValue = "";
+                    strCaption = "";
+
+                    //for (i = 0; i < rdrExcel.FieldCount; i++)
+                    for (i = 0; i < 20; i++)
+                    {
+
+                        sqlvalues2 = rdrExcel[i].ToString();
+                        exlcaption = rdrExcel.GetName(i);
+
+                        //if (sqlvalues2 != "")
+                        //{
+                        strValue = sqlvalues2 + "|" + strValue;
+
+                        strCaption = exlcaption + "|" + strCaption;
+                        //}
+
+                    }
+
+                }
+
+                data_Detail++;
+
+                if (strValue != "")
+                {
+                    j++;
+                    Import_Proses_dialog(strValue, j);
+                    //Import_Proses(strValue, strCaption, j);
+                }
+            }
+
+            rdrExcel.Close();
+
+        }
+
+
+        private void _ProcessExcel_VO(string ext, string fileXls)
+        {
+            System.Data.DataTable dt = null;
+
+            string connString = "";
+            string strFileType = ext;
+            string path = fileXls;
+            //Connection String to Excel Workbook
+            if (strFileType.Trim() == ".xls")
+            {
+                connString = "Provider=Microsoft.Jet.OLEDB.4.0;Data Source=" + path + ";Extended Properties=\"Excel 8.0;HDR=Yes;IMEX=2\"";
+            }
+            else if (strFileType.Trim() == ".xlsx")
+            {
+                connString = "Provider=Microsoft.ACE.OLEDB.12.0;Data Source=" + path + ";Extended Properties=\"Excel 12.0;HDR=Yes;IMEX=2\"";
+            }
+            string query = "";  //"SELECT * FROM [CAT$]";
+            OleDbConnection connExcel = new OleDbConnection(connString);
+            if (connExcel.State == ConnectionState.Closed)
+                connExcel.Open();
+
+            //---------get sheet name
+            int x = 0;
+            dt = connExcel.GetOleDbSchemaTable(OleDbSchemaGuid.Tables, null);
+            String[] excelSheets = new String[dt.Rows.Count];
+
+            foreach (DataRow row in dt.Rows)
+            {
+                if (x == 0)
+                {
+                    excelSheets[x] = row["TABLE_NAME"].ToString();
+                    query = "SELECT * FROM [" + excelSheets[x].Replace("'", "") + "]";
+                }
+                x++;
+            }
+            //---------------
+
+            OleDbCommand cmdExcel = new OleDbCommand(query, connExcel);
+            OleDbDataAdapter daExcel = new OleDbDataAdapter(cmdExcel);
+            DataSet dsExcel = new DataSet();
+
+            daExcel.Fill(dsExcel);
+
+            OleDbDataReader rdrExcel;
+            rdrExcel = cmdExcel.ExecuteReader();
+
+            int data_Detail = 0;
+            int i = 0;
+            int j = 0;
+            string strValue = "";
+            string strCaption = "";
+
+            Import_Delete();
+
+            while (rdrExcel.Read())
+            {
+                string sqlvalues2 = "";
+                string exlcaption = "";
+
+                if (data_Detail >= 0)
+                {
+
+                    strValue = "";
+                    strCaption = "";
+
+                    //for (i = 0; i < rdrExcel.FieldCount; i++)
+                    for (i = 0; i < 16; i++)
+                    {
+
+                        sqlvalues2 = rdrExcel[i].ToString();
+                        exlcaption = rdrExcel.GetName(i);
+
+                        //if (sqlvalues2 != "")
+                        //{
+                        strValue = sqlvalues2 + "|" + strValue;
+
+                        strCaption = exlcaption + "|" + strCaption;
+                        //}
+
+                    }
+
+                }
+
+                data_Detail++;
+
+                if (strValue != "")
+                {
+                    j++;
+                    Import_Proses_VO(strValue, j);
+                    //Import_Proses(strValue, strCaption, j);
+                }
+            }
+
+            rdrExcel.Close();
+
+        }
+
         private void Import_Delete()
         {
             SqlConnection conn = new SqlConnection(System.Web.Configuration.WebConfigurationManager.ConnectionStrings["AppDb"].ConnectionString);
@@ -248,7 +582,7 @@ namespace DotMercy.custom
                 conn.Open();
                 cmd.Connection = conn;
                 cmd.CommandTimeout = 0;
-                cmd.CommandText = "delete PackingListDetails_tmp;";
+                cmd.CommandText = "delete PackingListDetails_tmp; delete AlterationDetails_tmp; delete DialogDetails_tmp; delete VehicleOrderDetails_tmp; ";
                 string exeMsg = Convert.ToString(cmd.ExecuteScalar());
 
                 //check error
@@ -360,6 +694,268 @@ namespace DotMercy.custom
 
         }
 
+
+        private void Import_Proses_alteration(string strValue, int __no)
+        {
+            SqlConnection conn = new SqlConnection(System.Web.Configuration.WebConfigurationManager.ConnectionStrings["AppDb"].ConnectionString);
+            SqlCommand cmd = new SqlCommand();
+
+            bool isError = false;
+            string errMsg = "";
+
+            try
+            {
+                string[] strAll = strValue.Split('|');
+
+                int detail_id = Convert.ToInt32(__no);
+
+                string VpMonat = Convert.ToString(strAll[13]);
+                string Pem = Convert.ToString(strAll[12]);
+                string PemModelLine = Convert.ToString(strAll[11]);
+                string PartList = Convert.ToString(strAll[10]);
+                string Aa = Convert.ToString(strAll[9]);
+                string Application = Convert.ToString(strAll[8]);
+                string KennzAltNeu = Convert.ToString(strAll[7]);
+                string PartNo = Convert.ToString(strAll[6]);
+                string Es1 = Convert.ToString(strAll[5]);
+                string IndexNo = Convert.ToString(strAll[4]);
+                string Description = Convert.ToString(strAll[3]);
+                string Piece = Convert.ToString(strAll[2]);
+                string Code = Convert.ToString (strAll[1]);
+                string Remark = Convert.ToString (strAll[0]);
+
+                conn.Open();
+                cmd.Connection = conn;
+                cmd.CommandTimeout = 0;
+
+                cmd.CommandText = "insert into AlterationDetails_tmp (Id, VpMonat, Pem, PemModelLine, PartList, Aa, Application, KennzAltNeu, PartNo, Es1, " + 
+                                    " IndexNo, Description, Piece, Code, Remark ) " +
+                                    " values (" + detail_id + "," + VpMonat + ", '" + Pem + "', '" + PemModelLine + "','" + PartList + "', " +
+                                    " '" + Aa + "','" + Application + "','" + KennzAltNeu + "','" + PartNo + "','" + Es1 + "'," +
+                                    " '" + IndexNo + "','" + Description + "'," + Convert.ToDouble(Piece) + ", '" + Code + "', '" + Remark + "')";
+
+                string exeMsg = Convert.ToString(cmd.ExecuteScalar());
+
+                //insert master
+                //cmd.CommandText = "";
+
+
+                //check error
+                if (!exeMsg.Trim().Equals(""))
+                {
+                    //Logger.Error("Execution Query : " + exeMsg);
+                    isError = true;
+                    errMsg = exeMsg;
+                }
+                /*else
+                {
+                    // if success, move file;
+                    moveFileSurvTotxtDir(segmentId);
+                }*/
+
+                cmd.Parameters.Clear();
+
+            }
+            catch (Exception ex)
+            {
+                //Logger.Error(ex.Message);
+                isError = true;
+                errMsg = ex.Message;
+            }
+            finally
+            {
+                conn.Close();
+                cmd.Dispose();
+                conn.Dispose();
+            }
+
+            if (isError)
+            {
+                throw new InvalidOperationException(errMsg);
+            }
+
+        }
+
+
+        private void Import_Proses_dialog(string strValue, int __no)
+        {
+            SqlConnection conn = new SqlConnection(System.Web.Configuration.WebConfigurationManager.ConnectionStrings["AppDb"].ConnectionString);
+            SqlCommand cmd = new SqlCommand();
+
+            bool isError = false;
+            string errMsg = "";
+
+            try
+            {
+                string[] strAll = strValue.Split('|');
+
+                int detail_id = Convert.ToInt32(__no);
+
+	            string SubModule = Convert.ToString(strAll[19]);
+                string POS = Convert.ToString(strAll[18]);
+                string PV = Convert.ToString(strAll[17]);
+                string WW = Convert.ToString(strAll[16]);
+                string AA = Convert.ToString(strAll[15]);
+                string LK = Convert.ToString(strAll[14]);
+                string SC = Convert.ToString(strAll[13]);
+                string SP = Convert.ToString(strAll[12]);
+                string ST = Convert.ToString(strAll[11]);
+                string Part = Convert.ToString(strAll[10]);
+                string ZB = Convert.ToString(strAll[9]);
+                string Name_ = Convert.ToString(strAll[8]);
+
+                string Quantity = "";
+                if (Convert.ToString(strAll[7]) == "")
+                {
+                    Quantity = "0";
+                } else {
+                    Quantity = Convert.ToString(strAll[7]);
+                }
+                
+                string UQTY = Convert.ToString(strAll[6]);
+                string CodeRule = Convert.ToString(strAll[5]);
+                string R = Convert.ToString(strAll[4]);
+                string BZA = Convert.ToString(strAll[3]);
+                string DevBZA = Convert.ToString(strAll[2]);
+                string PEMFrom = Convert.ToString(strAll[1]);
+                string PEMTo = Convert.ToString(strAll[0]);
+
+                conn.Open();
+                cmd.Connection = conn;
+                cmd.CommandTimeout = 0;
+
+                cmd.CommandText = "insert into DialogDetails_tmp (Id, SubModule, POS, PV, WW, AA, LK, SC, SP, ST, Part, ZB, Name, Quantity, UQTY, " +
+                                    " CodeRule, R, BZA, DevBZA, PEMFrom, PEMTo ) " +
+                                    " values (" + detail_id + ",'" + SubModule + "', '" + POS + "', '" + PV + "','" + WW + "', " +
+                                    " '" + AA + "','" + LK + "','" + SC + "','" + SP + "','" + ST + "','" + Part + "'," +
+                                    " '" + ZB + "','" + Name_ + "', " + Convert.ToDouble(Quantity) + ",'" + UQTY + "', '" + CodeRule + "', '" + R + "', " +
+                                    " '" + BZA + "', '" + DevBZA + "', '" + PEMFrom + "', '" + PEMTo + "')";
+
+                string exeMsg = Convert.ToString(cmd.ExecuteScalar());
+
+                //insert master
+                //cmd.CommandText = "";
+
+
+                //check error
+                if (!exeMsg.Trim().Equals(""))
+                {
+                    //Logger.Error("Execution Query : " + exeMsg);
+                    isError = true;
+                    errMsg = exeMsg;
+                }
+                /*else
+                {
+                    // if success, move file;
+                    moveFileSurvTotxtDir(segmentId);
+                }*/
+
+                cmd.Parameters.Clear();
+
+            }
+            catch (Exception ex)
+            {
+                //Logger.Error(ex.Message);
+                isError = true;
+                errMsg = ex.Message;
+            }
+            finally
+            {
+                conn.Close();
+                cmd.Dispose();
+                conn.Dispose();
+            }
+
+            if (isError)
+            {
+                throw new InvalidOperationException(errMsg);
+            }
+
+        }
+
+
+        private void Import_Proses_VO(string strValue, int __no)
+        {
+            SqlConnection conn = new SqlConnection(System.Web.Configuration.WebConfigurationManager.ConnectionStrings["AppDb"].ConnectionString);
+            SqlCommand cmd = new SqlCommand();
+
+            bool isError = false;
+            string errMsg = "";
+
+            try
+            {
+                string[] strAll = strValue.Split('|');
+
+                int detail_id = Convert.ToInt32(__no);
+
+                string Plan = Convert.ToString(strAll[15]);
+                string ProdNumber = Convert.ToString(strAll[14]);
+                string OrderNumber = Convert.ToString(strAll[13]);
+                string VehicleNumber = Convert.ToString(strAll[12]);
+                string DeliveryNumber = Convert.ToString(strAll[11]);
+                string VehicleType = Convert.ToString(strAll[10]);
+                string EngineType = Convert.ToString(strAll[9]);
+                string PlantDispathDate = Convert.ToString(strAll[8]);
+                string Interior = Convert.ToString(strAll[7]);
+                string Paint = Convert.ToString(strAll[6]);
+                string Model = Convert.ToString(strAll[5]);
+                string CountryName = Convert.ToString(strAll[4]);
+                string EngineNumber = Convert.ToString(strAll[3]);
+                string SampleDigit = Convert.ToString(strAll[2]);
+                string NumberOfCode = Convert.ToString(strAll[1]);
+                string Codes = Convert.ToString(strAll[0]);
+
+                conn.Open();
+                cmd.Connection = conn;
+                cmd.CommandTimeout = 0;
+
+                cmd.CommandText = "insert into VehicleOrderDetails_tmp (Id, [Plan], ProdNumber, OrderNumber, VehicleNumber, DeliveryNumber, VehicleType, EngineType, " +
+                                    " PlantDispathDate, Interior, Paint, Model, CountryName, EngineNumber, SampleDigit, NumberOfCode, Codes ) " +
+                                    " values (" + detail_id + ",'" + Plan + "', '" + ProdNumber + "', '" + OrderNumber + "','" + VehicleNumber + "', " +
+                                    " '" + DeliveryNumber + "','" + VehicleType + "','" + EngineType + "','" + PlantDispathDate + "','" + Interior + "','" + Paint + "'," +
+                                    " '" + Model + "','" + CountryName + "', '" + EngineNumber + "','" + SampleDigit + "', '" + NumberOfCode + "', '" + Codes + "')";
+
+                string exeMsg = Convert.ToString(cmd.ExecuteScalar());
+
+                //insert master
+                //cmd.CommandText = "";
+
+
+                //check error
+                if (!exeMsg.Trim().Equals(""))
+                {
+                    //Logger.Error("Execution Query : " + exeMsg);
+                    isError = true;
+                    errMsg = exeMsg;
+                }
+                /*else
+                {
+                    // if success, move file;
+                    moveFileSurvTotxtDir(segmentId);
+                }*/
+
+                cmd.Parameters.Clear();
+
+            }
+            catch (Exception ex)
+            {
+                //Logger.Error(ex.Message);
+                isError = true;
+                errMsg = ex.Message;
+            }
+            finally
+            {
+                conn.Close();
+                cmd.Dispose();
+                conn.Dispose();
+            }
+
+            if (isError)
+            {
+                throw new InvalidOperationException(errMsg);
+            }
+
+        }
         //---------end import data excel-----------/\
 
         protected void btSave_Master(object sender, EventArgs e)
@@ -386,6 +982,158 @@ namespace DotMercy.custom
                 cmd.CommandTimeout = 0;
 
                 cmd.CommandText = "insert into PackingLists (PackingMonth, ModelId, VarianId, FileType) " +
+                                    " values (" + intPackingMonth + "," + intModelId + ", " + intVarianId + ", " + intFileType + ")";
+
+                string exeMsg = Convert.ToString(cmd.ExecuteScalar());
+
+                //check error
+                if (!exeMsg.Trim().Equals(""))
+                {
+                    //Logger.Error("Execution Query : " + exeMsg);
+                    isError = true;
+                    errMsg = exeMsg;
+                }
+
+                cmd.Parameters.Clear();
+
+            }
+            catch (Exception ex)
+            {
+                //Logger.Error(ex.Message);
+                isError = true;
+                errMsg = ex.Message;
+            }
+            finally
+            {
+                conn.Close();
+                cmd.Dispose();
+                conn.Dispose();
+            }
+
+            if (isError)
+            {
+                throw new InvalidOperationException(errMsg);
+            }
+
+        }
+
+
+        private void Process_SaveMaster_Alteration(int intModelId, int intVarianId, int intPackingMonth, int intFileType)
+        {
+            SqlConnection conn = new SqlConnection(System.Web.Configuration.WebConfigurationManager.ConnectionStrings["AppDb"].ConnectionString);
+            SqlCommand cmd = new SqlCommand();
+
+            bool isError = false;
+            string errMsg = "";
+
+            try
+            {
+                conn.Open();
+                cmd.Connection = conn;
+                cmd.CommandTimeout = 0;
+
+                cmd.CommandText = "insert into Alterations (PackingMonth, ModelId, VarianId, FileType) " +
+                                    " values (" + intPackingMonth + "," + intModelId + ", " + intVarianId + ", " + intFileType + ")";
+
+                string exeMsg = Convert.ToString(cmd.ExecuteScalar());
+
+                //check error
+                if (!exeMsg.Trim().Equals(""))
+                {
+                    //Logger.Error("Execution Query : " + exeMsg);
+                    isError = true;
+                    errMsg = exeMsg;
+                }
+
+                cmd.Parameters.Clear();
+
+            }
+            catch (Exception ex)
+            {
+                //Logger.Error(ex.Message);
+                isError = true;
+                errMsg = ex.Message;
+            }
+            finally
+            {
+                conn.Close();
+                cmd.Dispose();
+                conn.Dispose();
+            }
+
+            if (isError)
+            {
+                throw new InvalidOperationException(errMsg);
+            }
+
+        }
+
+        private void Process_SaveMaster_Dialog(int intModelId, int intVarianId, int intPackingMonth, int intFileType)
+        {
+            SqlConnection conn = new SqlConnection(System.Web.Configuration.WebConfigurationManager.ConnectionStrings["AppDb"].ConnectionString);
+            SqlCommand cmd = new SqlCommand();
+
+            bool isError = false;
+            string errMsg = "";
+
+            try
+            {
+                conn.Open();
+                cmd.Connection = conn;
+                cmd.CommandTimeout = 0;
+
+                cmd.CommandText = "insert into Dialogs (PackingMonth, ModelId, VarianId, FileType) " +
+                                    " values (" + intPackingMonth + "," + intModelId + ", " + intVarianId + ", " + intFileType + ")";
+
+                string exeMsg = Convert.ToString(cmd.ExecuteScalar());
+
+                //check error
+                if (!exeMsg.Trim().Equals(""))
+                {
+                    //Logger.Error("Execution Query : " + exeMsg);
+                    isError = true;
+                    errMsg = exeMsg;
+                }
+
+                cmd.Parameters.Clear();
+
+            }
+            catch (Exception ex)
+            {
+                //Logger.Error(ex.Message);
+                isError = true;
+                errMsg = ex.Message;
+            }
+            finally
+            {
+                conn.Close();
+                cmd.Dispose();
+                conn.Dispose();
+            }
+
+            if (isError)
+            {
+                throw new InvalidOperationException(errMsg);
+            }
+
+        }
+
+
+        private void Process_SaveMaster_VO(int intModelId, int intVarianId, int intPackingMonth, int intFileType)
+        {
+            SqlConnection conn = new SqlConnection(System.Web.Configuration.WebConfigurationManager.ConnectionStrings["AppDb"].ConnectionString);
+            SqlCommand cmd = new SqlCommand();
+
+            bool isError = false;
+            string errMsg = "";
+
+            try
+            {
+                conn.Open();
+                cmd.Connection = conn;
+                cmd.CommandTimeout = 0;
+
+                cmd.CommandText = "insert into VehicleOrders (PackingMonth, ModelId, VarianId, FileType) " +
                                     " values (" + intPackingMonth + "," + intModelId + ", " + intVarianId + ", " + intFileType + ")";
 
                 string exeMsg = Convert.ToString(cmd.ExecuteScalar());
