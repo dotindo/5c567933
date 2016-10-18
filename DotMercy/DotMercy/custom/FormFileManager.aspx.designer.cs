@@ -13,12 +13,12 @@ namespace DotMercy.custom {
     public partial class FormFileManager {
         
         /// <summary>
-        /// fileManager control.
+        /// ASPxFileManager1 control.
         /// </summary>
         /// <remarks>
         /// Auto-generated field.
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
-        protected global::DevExpress.Web.ASPxFileManager fileManager;
+        protected global::DevExpress.Web.ASPxFileManager ASPxFileManager1;
     }
 }
