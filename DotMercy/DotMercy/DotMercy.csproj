@@ -103,7 +103,10 @@
     <Content Include="Account\Login.aspx" />
     <Content Include="Account\Register.aspx" />
     <Content Include="Account\RegisterSuccess.aspx" />
-    <Content Include="App_Data\dotwebdb2.mdf" />
+    <Content Include="App_Data\dotwebdb.mdf" />
+    <Content Include="App_Data\dotwebdb_log.LDF">
+      <DependentUpon>dotwebdb.mdf</DependentUpon>
+    </Content>
     <Content Include="App_Data\mercedesdb.mdf" />
     <Content Include="App_Data\mercedesdb_log.LDF">
       <DependentUpon>mercedesdb.mdf</DependentUpon>
